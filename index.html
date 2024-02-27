@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Home</title>
+    <style>
+        .app {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        .search-box {
+            position: absolute;
+            width: 300px;
+            left: 0;
+            top: 50px;
+        }
+
+        .results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+        }
+
+        .search-result {
+            padding: 10px;
+            background-color: white;
+            box-shadow: 0 0 5px 0 #ccc;
+            border-radius: 5px;
+            margin: 5px 0;
+            cursor: pointer;
+
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .item-page {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            margin-top: 5vh;
+        }
+
+        .recipe-item-text {
+            padding: 10px;
+            box-shadow: 0 0 5px 0 #ccc;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .recipe-end {
+            background-color: rgb(127, 127, 255);
+        }
+
+        .recipe-item {
+            margin: 0;
+            padding: 0;
+            
+        }
+
+        .recipe-item-text:hover {
+            background-color: #f0f0f0;
+            cursor: pointer;
+        }
+
+        .recipe-item-step {
+            margin: 10px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            flex-direction: row;
+            box-shadow: 0 0 5px 0 #ccc;
+            justify-content: center;
+        }
+
+        .item-recipe {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            margin-top: 5vh;
+            justify-content: center;
+        }
+
+        .crafting-tree-title {
+            text-align: center;
+        }
+
+        menu {
+            display: flex;
+            justify-content: left;
+            width: 100%;
+            padding: 10px;
+            margin: 0;
+        }
+        menu * {
+            margin: 10px;
+            font-size: 16px;
+            font-weight: 900;
+            font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <menu>
+            <p id="item-count">9103 Unique Items</p>
+            <p id="recipe-count">57341 Different Recipes</p>
+        <div class="search-box">
+            <input class="search-input" type="text" id="search" placeholder="Search">
+            <div id="results"></div>
+        </div>
+        </menu>
+        <div class="item-page">
+            <h1 class="item-title"></h1>
+            <h2 class="crafting-tree-title">Crafting Steps</h2>
+            <table id="recipe-steps">
+            </table>
+            <div id="item-recipe">
+                <h2 class="crafting-tree-title">Crafting tree</h2>
+                <div id="recipe"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const DATASET_FILE = 'dataset.json';
+        let items;
+        fetch(DATASET_FILE)
+            .then(response => response.json())
+            .then(data => {
+                items = data
+                restOfCode()
+            })
+            .catch(error => console.error(error));
+
+        function restOfCode() {
+            document.getElementById('search').addEventListener('input', function (event) {
+                const results = Object.keys(items).filter(item => item.toLowerCase().includes(event.target.value.toLowerCase())).slice(0, 5);
+                const resultsElement = document.getElementById('results');
+                resultsElement.innerHTML = '';
+                results.forEach(result => resultsElement.innerHTML += `<div class='search-result' onclick="window.location.href = '?item=${result}'">${result}</div>`);
+            });
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const item = urlParams.get('item');
+            if (item) {
+                highest_depth = items[item].depth;
+                scale = 1 / highest_depth;
+                document.querySelector('.item-title').innerText = items[item].emoji + "  " + item;
+                document.getElementById('recipe').innerHTML = "<table>" + recipeRecursion(item) + "</table>";
+            }
+        }
+
+        const BASE_ITEMS = [
+            "Fire",
+            "Water",
+            "Wind",
+            "Earth"
+        ]
+        let seen = []
+        let highest_depth = 0;
+        let scale = 1;
+        function recipeRecursion(recipe) {
+            let recipeHTML = '';
+            if (BASE_ITEMS.includes(recipe)) {
+                return `<td class='recipe-item'><p class='recipe-item-text recipe-end'>${items[recipe].emoji}  ${recipe}</p></td>`;
+            }
+            if (items[recipe].recipe) {
+                recipeHTML += `<td class='recipe-item'"><p class='recipe-item-text' onClick="window.location.href = '?item=${recipe}'" style="background-color: rgb(127,127,255, ${1-(scale * items[recipe].depth)})">${items[recipe].emoji}  ${recipe}</p></td>`;
+                recipeHTML += `<td><table>`;
+                items[recipe].recipe.forEach(item => {
+                    recipeHTML += `<tr>${recipeRecursion(item)}<tr>`;
+                });
+                recipeHTML += `</table></td>`;
+                if (!seen.includes(recipe)) {
+                    document.getElementById('recipe-steps').innerHTML += ` 
+                    <tr class='recipe-item-steps'>
+                        <td>Step ${seen.length + 1}:</td>
+                        <td class='recipe-item-step'>${items[recipe].emoji}  ${recipe}</td> 
+                        <td>=</td> 
+                        <td class='recipe-item-step'>${items[items[recipe].recipe[0]].emoji} ${items[recipe].recipe[0]}</td> 
+                        <td>+</td> 
+                        <td class='recipe-item-step'>${items[items[recipe].recipe[1]].emoji} ${items[recipe].recipe[1]}</td>
+                    </td>`;
+                    seen.push(recipe);
+                }
+            }
+            return recipeHTML;
+        }
+
+
+    </script>
+</body>
+
+</html>
